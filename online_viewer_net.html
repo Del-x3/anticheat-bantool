@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!--
+  ╔══════════════════════════════════════════════════════════╗
+  ║           AntiCheat Ban Tool — Setup Guide               ║
+  ╠══════════════════════════════════════════════════════════╣
+  ║  BEFORE UPLOADING TO GITHUB:                             ║
+  ║  1. Open this file locally in your browser               ║
+  ║  2. Add ?setup to the URL:                               ║
+  ║       file:///path/to/BanTool.html?setup                 ║
+  ║  3. Use the Hash Generator to hash your setup key        ║
+  ║  4. Paste the hash into SETUP_KEY_HASH below             ║
+  ║  5. Save the file and upload to GitHub                   ║
+  ║                                                          ║
+  ║  Without a valid SETUP_KEY_HASH the page rejects         ║
+  ║  all credential creation attempts permanently.           ║
+  ║                                                          ║
+  ║  SECURITY:                                               ║
+  ║  - Setup key hash is hardcoded — only you know the key   ║
+  ║  - Wrong login 5x = 15 minute lockout                    ║
+  ║  - Session expires after 30 min of inactivity            ║
+  ║  - API key lives in memory only, wiped on logout         ║
+  ╚══════════════════════════════════════════════════════════╝
+-->
+<title>404 — Page Not Found</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:       #0f1117;
+    --surface:  #1a1d27;
+    --border:   #2d3148;
+    --text:     #e2e8f0;
+    --muted:    #64748b;
+    --subtle:   #94a3b8;
+    --accent:   #6366f1;
+    --accent-h: #4f46e5;
+    --danger:   #ef4444;
+    --danger-h: #dc2626;
+    --success:  #22c55e;
+    --warning:  #f59e0b;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; display: flex;
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  #decoy { text-align: center; color: var(--muted); }
+  #decoy h1 { font-size: 80px; font-weight: 800; color: #1e2130; }
+  #decoy p  { font-size: 16px; margin-top: 8px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 36px; width: 100%; max-width: 460px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5); display: none;
+  }
+  .card.active { display: block; }
+
+  .card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .card-icon  { font-size: 26px; line-height: 1; }
+  .card-title { font-size: 18px; font-weight: 700; color: #f1f5f9; }
+  .card-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .divider { height: 1px; background: var(--border); margin: 0 -36px 24px; }
+
+  .field { margin-bottom: 16px; }
+  label {
+    display: block; font-size: 11px; font-weight: 700; color: var(--subtle);
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px;
+  }
+  input, select {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-size: 14px;
+    padding: 10px 13px; outline: none; transition: border-color .15s; font-family: inherit;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  select option { background: var(--surface); }
+
+  .hash-display {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; color: #86efac; font-size: 12px; font-family: monospace;
+    padding: 10px 13px; word-break: break-all; min-height: 42px;
+    display: flex; align-items: center;
+  }
+
+  .btn {
+    width: 100%; padding: 11px; border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: background .15s, transform .1s, opacity .15s;
+    font-family: inherit; margin-top: 4px;
+  }
+  .btn + .btn { margin-top: 8px; }
+  .btn:active:not(:disabled) { transform: scale(.98); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary { background: var(--accent);  color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-h); }
+  .btn-danger  { background: var(--danger);  color: #fff; }
+  .btn-danger:hover:not(:disabled)  { background: var(--danger-h); }
+  .btn-ghost   { background: var(--border);  color: var(--subtle); }
+  .btn-ghost:hover:not(:disabled)   { background: #363b5a; color: var(--text); }
+  .btn-sm { padding: 8px 14px; font-size: 13px; width: auto; margin-top: 0; }
+
+  .alert {
+    display: none; border-radius: 8px; padding: 11px 14px;
+    font-size: 13px; line-height: 1.5; margin-bottom: 16px;
+  }
+  .alert.show { display: block; }
+  .alert-error   { background: rgba(239,68,68,.1);  border: 1px solid rgba(239,68,68,.3);  color: #fca5a5; }
+  .alert-success { background: rgba(34,197,94,.1);  border: 1px solid rgba(34,197,94,.3);  color: #86efac; }
+  .alert-info    { background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.3); color: #a5b4fc; }
+  .alert-warn    { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); color: #fcd34d; }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .copy-row { display: flex; gap: 8px; align-items: flex-start; }
+  .copy-row .hash-display { flex: 1; }
+
+  #sessionBar {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--muted); margin-bottom: 20px;
+    padding: 8px 12px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px;
+  }
+  #sessionTimer { font-variant-numeric: tabular-nums; color: var(--subtle); }
+  #sessionTimer.warn { color: var(--warning); font-weight: 700; }
+  #signoutBtn {
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; font-size: 12px; padding: 0; font-family: inherit;
+  }
+  #signoutBtn:hover { color: var(--text); }
+
+  .player-badge {
+    display: none; align-items: center; gap: 10px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 12px; margin-top: 8px;
+  }
+  .player-badge.show { display: flex; }
+  .player-badge img    { width: 30px; height: 30px; border-radius: 50%; }
+  .player-badge .pname { font-weight: 600; font-size: 13px; }
+  .player-badge .pid   { font-size: 11px; color: var(--muted); }
+
+  #strengthWrap { margin-top: 6px; display: none; }
+  #strengthWrap.show { display: block; }
+  #strengthBar  { height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
+  #strengthFill { height: 100%; width: 0; border-radius: 2px; transition: width .3s, background .3s; }
+  #strengthLabel { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  .note { font-size: 11px; color: var(--muted); text-align: center; margin-top: 18px; line-height: 1.6; }
+  .note a { color: var(--accent); text-decoration: none; }
+  .note a:hover { text-decoration: underline; }
+  code {
+    background: rgba(0,0,0,.35); padding: 1px 5px;
+    border-radius: 4px; font-family: monospace; font-size: 11px;
+  }
+  .step {
+    display: flex; gap: 12px; align-items: flex-start;
+    margin-bottom: 14px; font-size: 13px; line-height: 1.5;
+  }
+  .step-num {
+    background: var(--accent); color: #fff; border-radius: 50%;
+    width: 22px; height: 22px; min-width: 22px; font-size: 11px;
+    font-weight: 700; display: flex; align-items: center; justify-content: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- Shown to unauthenticated visitors — looks like a broken page -->
+<div id="decoy">
+  <h1>404</h1>
+  <p>This page could not be found.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN 0: Hash Generator (local use only, ?setup)
+     Never shown on the live GitHub Pages site —
+     only accessible when you add ?setup to the URL
+     while opening the file locally before uploading.
+══════════════════════════════════════════════════════ -->
+<div class="card" id="hashGenCard">
+  <div class="card-header">
+    <div class="card-icon">⚙️</div>
+    <div>
+      <div class="card-title">Setup — Hash Generator</div>
+      <div class="card-sub">Local use only — do this before uploading to GitHub</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="alert alert-warn show">
+    ⚠️ You are in local setup mode (<code>?setup</code>). This screen is only reachable locally.
+    Complete the steps below, update the file, then upload it to GitHub.
+  </div>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div>Choose a <strong>setup key</strong> — this is the secret anyone needs to know before they can create credentials on your ban tool. Make it long and random.</div>
+  </div>
+  <div class="field">
+    <label>Your Setup Key</label>
+    <input type="password" id="genInput" placeholder="Type your secret setup key here"
+           oninput="generateHash()">
+  </div>
+
+  <div class="step" style="margin-top:4px">
+    <div class="step-num">2</div>
+    <div>Copy the hash below and paste it into <code>SETUP_KEY_HASH</code> in this file (line ~230), replacing the empty string <code>""</code>.</div>
+  </div>
+  <div class="field">
+    <label>SHA-256 Hash of Your Setup Key</label>
+    <div class="copy-row">
+      <div class="hash-display" id="hashOutput">— enter your key above —</div>
+      <button class="btn btn-ghost btn-sm" onclick="copyHash()">Copy</button>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div>Save the file, remove <code>?setup</code> from the URL and reload to verify it shows the 404 decoy, then upload to GitHub.</div>
+  </div>
+
+  <div class="alert alert-success" id="copyOk">✅ Copied to clipboard!</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN 1: Account Setup (requires setup key)
+══════════════════════════════════════════════════════ -->
+<div class="card" id="setupCard">
+  <div class="card-header">
+    <div class="card-icon">🔐</div>
+    <div>
+      <div class="card-title">Create Your Credentials</div>
+      <div class="card-sub">One-time setup — requires the setup key</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="alert alert-info show">
+    Your real password is <strong>never stored</strong> — only its SHA-256 hash is saved locally.
+    You must also know the <strong>setup key</strong> to create an account.
+  </div>
+
+  <div class="field">
+    <label>Setup Key</label>
+    <input type="password" id="setupKey" placeholder="Enter the setup key" autocomplete="off">
+  </div>
+  <div class="field">
+    <label>Username</label>
+    <input type="text" id="setupUser" placeholder="Choose a username" autocomplete="off" spellcheck="false">
+  </div>
+  <div class="field">
+    <label>Password</label>
+    <input type="password" id="setupPass" placeholder="Choose a strong password"
+           autocomplete="new-password" oninput="checkStrength()">
+    <div id="strengthWrap">
+      <div id="strengthBar"><div id="strengthFill"></div></div>
+      <div id="strengthLabel"></div>
+    </div>
+  </div>
+  <div class="field">
+    <label>Confirm Password</label>
+    <input type="password" id="setupConfirm" placeholder="Repeat your password"
+           autocomplete="new-password" onkeydown="if(event.key==='Enter') createCredentials()">
+  </div>
+
+  <div class="alert alert-error" id="setupErr"></div>
+  <button class="btn btn-primary" onclick="createCredentials()">Create Account →</button>
+
+  <p class="note">Credentials saved as SHA-256 hashes only. Nothing is sent to any server.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN 2: Login
+══════════════════════════════════════════════════════ -->
+<div class="card" id="loginCard">
+  <div class="card-header">
+    <div class="card-icon">🔒</div>
+    <div>
+      <div class="card-title">AntiCheat Ban Tool</div>
+      <div class="card-sub">Sign in to continue</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="alert alert-error" id="loginErr"></div>
+  <div class="alert alert-warn"  id="lockoutAlert"></div>
+
+  <div class="field">
+    <label>Username</label>
+    <input type="text" id="loginUser" placeholder="Your username"
+           autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter') login()">
+  </div>
+  <div class="field">
+    <label>Password</label>
+    <input type="password" id="loginPass" placeholder="Your password"
+           autocomplete="current-password" onkeydown="if(event.key==='Enter') login()">
+  </div>
+
+  <button class="btn btn-primary" id="loginBtn" onclick="login()">Sign In</button>
+
+  <p class="note">
+    5 failed attempts triggers a 15-minute lockout.<br>
+    To reset credentials, clear <code>ac_credHash</code> from localStorage — you will need the setup key again.
+  </p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCREEN 3: Ban Tool
+══════════════════════════════════════════════════════ -->
+<div class="card" id="banCard">
+  <div id="sessionBar">
+    <span>🟢 Authenticated</span>
+    <span id="sessionTimer">30:00</span>
+    <button id="signoutBtn" onclick="logout(false)">Sign out</button>
+  </div>
+
+  <div class="card-header">
+    <div class="card-icon">🔨</div>
+    <div>
+      <div class="card-title">Ban Tool</div>
+      <div class="card-sub">Roblox Open Cloud — Manual Ban</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="alert alert-info show" id="apiNote">
+    <strong>Enter your Open Cloud API key.</strong> Held <strong>in memory only</strong> — never written to storage.
+    Get one at <a href="https://create.roblox.com/dashboard/credentials" target="_blank">create.roblox.com/dashboard/credentials</a>
+    with the <code>user-restrictions:write</code> permission.
+  </div>
+
+  <div class="field">
+    <label>Open Cloud API Key <span style="color:var(--danger)">*</span></label>
+    <input type="password" id="apiKey" placeholder="Paste API key — never saved to disk"
+           autocomplete="off" oninput="onApiKeyInput()">
+  </div>
+  <div class="field">
+    <label>Universe ID</label>
+    <input type="text" id="universeId" placeholder="e.g. 1234567890" oninput="saveUniverseId()">
+  </div>
+
+  <div class="divider" style="margin-top:8px"></div>
+
+  <div class="field">
+    <label>Player UserID</label>
+    <input type="text" id="userId" placeholder="e.g. 987654321" onchange="lookupPlayer()">
+    <div class="player-badge" id="playerBadge">
+      <img id="playerAvatar" src="" alt="">
+      <div>
+        <div class="pname" id="playerName">—</div>
+        <div class="pid"   id="playerIdDisplay">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label>Duration</label>
+      <select id="duration">
+        <option value="86400">1 Day</option>
+        <option value="259200">3 Days</option>
+        <option value="604800" selected>7 Days</option>
+        <option value="2592000">30 Days</option>
+        <option value="-1">Permanent</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Ban Alts?</label>
+      <select id="banAlts">
+        <option value="true">Yes</option>
+        <option value="false">No</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Display Reason (shown to player)</label>
+    <input type="text" id="displayReason" value="You have been banned for cheating.">
+  </div>
+  <div class="field">
+    <label>Private Reason (staff only)</label>
+    <input type="text" id="privateReason" value="Manual ban via AntiCheat Ban Tool.">
+  </div>
+
+  <div class="alert alert-error"   id="banErr"></div>
+  <div class="alert alert-success" id="banOk"></div>
+
+  <button class="btn btn-danger" id="banBtn" onclick="executeBan()">🔨 Ban Player</button>
+  <button class="btn btn-ghost"             onclick="clearBanForm()">Clear Form</button>
+
+  <p class="note">
+    API key is memory-only — never written to localStorage.<br>
+    Calls go directly to the
+    <a href="https://create.roblox.com/docs/cloud/reference/UniverseUserRestrictions" target="_blank">
+    Roblox Open Cloud API</a>.
+  </p>
+</div>
+
+<script>
+"use strict";
+
+// ════════════════════════════════════════════════════════════════
+//  ⚠  CONFIGURE BEFORE UPLOADING TO GITHUB
+//  Paste the SHA-256 hash of your setup key here.
+//  Generate it using this file locally with ?setup in the URL.
+//  Leave as "" and the setup screen will be permanently locked.
+// ════════════════════════════════════════════════════════════════
+const SETUP_KEY_HASH = "7ea6ffb7d3c26f250df53f72f29a8207ec8d8dfd8d799e625272c1e68f6da5ae";
+
+// ── Constants ────────────────────────────────────────────────────
+const SESSION_MS   = 30 * 60 * 1000;
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS   = 15 * 60 * 1000;
+const SALT         = "ac_bantool_v2_2025";
+
+// ── In-memory state ──────────────────────────────────────────────
+let sessionExpiry   = null;
+let sessionInterval = null;
+let lockoutInterval = null;
+let apiKeyMemory    = "";
+let genHashCurrent  = "";
+
+// ── Helpers ──────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest("SHA-256",
+    new TextEncoder().encode(SALT + str));
+  return Array.from(new Uint8Array(buf))
+    .map(b => b.toString(16).padStart(2,"0")).join("");
+}
+
+function alertShow(el, msg) { if (msg !== undefined) el.textContent = msg; el.classList.add("show"); }
+function alertHide(el)      { el.classList.remove("show"); }
+
+function showCard(id) {
+  $("decoy").style.display = "none";
+  ["hashGenCard","setupCard","loginCard","banCard"]
+    .forEach(c => $(c).classList.remove("active"));
+  if (id === "decoy") {
+    $("decoy").style.display = "block";
+  } else {
+    $(id).classList.add("active");
+  }
+}
+
+function resetActivity() {
+  if (sessionExpiry) sessionExpiry = Date.now() + SESSION_MS;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Boot
+// ════════════════════════════════════════════════════════════════
+window.addEventListener("load", async () => {
+  const params = new URLSearchParams(window.location.search);
+
+  // ?setup — local hash generator, only usable before SETUP_KEY_HASH is set
+  if (params.has("setup") && !SETUP_KEY_HASH) {
+    showCard("hashGenCard");
+    return;
+  }
+
+  // No setup key configured yet — permanently locked
+  if (!SETUP_KEY_HASH) {
+    showCard("decoy");
+    return;
+  }
+
+  const creds = localStorage.getItem("ac_credHash");
+  if (!creds) {
+    showCard("setupCard");
+    return;
+  }
+
+  const lockoutUntil = parseInt(localStorage.getItem("ac_lockout") || "0");
+  if (Date.now() < lockoutUntil) {
+    showCard("loginCard");
+    startLockoutCountdown(lockoutUntil);
+    return;
+  }
+
+  showCard("loginCard");
+});
+
+// ════════════════════════════════════════════════════════════════
+//  Hash Generator (local ?setup screen)
+// ════════════════════════════════════════════════════════════════
+async function generateHash() {
+  const val = $("genInput").value;
+  if (!val) { $("hashOutput").textContent = "— enter your key above —"; genHashCurrent = ""; return; }
+  genHashCurrent = await sha256(val);
+  $("hashOutput").textContent = genHashCurrent;
+}
+
+async function copyHash() {
+  if (!genHashCurrent) return;
+  await navigator.clipboard.writeText(genHashCurrent);
+  alertShow($("copyOk"));
+  setTimeout(() => alertHide($("copyOk")), 2500);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Screen 1: Setup
+// ════════════════════════════════════════════════════════════════
+function checkStrength() {
+  const p    = $("setupPass").value;
+  const wrap = $("strengthWrap");
+  if (!p) { wrap.classList.remove("show"); return; }
+  wrap.classList.add("show");
+  let score = 0;
+  if (p.length >= 8)          score++;
+  if (p.length >= 12)         score++;
+  if (/[A-Z]/.test(p))        score++;
+  if (/[0-9]/.test(p))        score++;
+  if (/[^A-Za-z0-9]/.test(p)) score++;
+  const clrs = ["#ef4444","#f97316","#eab308","#84cc16","#22c55e"];
+  const lbls = ["Very weak","Weak","Fair","Strong","Very strong"];
+  const pcts = ["20%","40%","60%","80%","100%"];
+  const i = Math.min(score - 1, 4);
+  $("strengthFill").style.width      = pcts[i] || "0";
+  $("strengthFill").style.background = clrs[i] || "var(--border)";
+  $("strengthLabel").textContent     = lbls[i] || "";
+  $("strengthLabel").style.color     = clrs[i] || "var(--muted)";
+}
+
+async function createCredentials() {
+  const key = $("setupKey").value;
+  const u   = $("setupUser").value.trim();
+  const p   = $("setupPass").value;
+  const p2  = $("setupConfirm").value;
+  const err = $("setupErr");
+  alertHide(err);
+
+  // Verify setup key first — before revealing any useful error info
+  if (!key) return alertShow(err, "Setup key is required.");
+  const keyHash = await sha256(key);
+  if (keyHash !== SETUP_KEY_HASH) {
+    // Deliberate delay to slow brute-force attempts
+    await new Promise(r => setTimeout(r, 1200));
+    return alertShow(err, "Invalid setup key.");
+  }
+
+  if (!u || u.length < 3)  return alertShow(err, "Username must be at least 3 characters.");
+  if (!p || p.length < 8)  return alertShow(err, "Password must be at least 8 characters.");
+  if (p !== p2)             return alertShow(err, "Passwords do not match.");
+
+  const uHash = await sha256(u);
+  const pHash = await sha256(p);
+  localStorage.setItem("ac_credHash", JSON.stringify({ u: uHash, p: pHash }));
+  localStorage.removeItem("ac_lockout");
+  localStorage.removeItem("ac_attempts");
+
+  $("setupKey").value = $("setupUser").value = $("setupPass").value = $("setupConfirm").value = "";
+  showCard("loginCard");
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Screen 2: Login
+// ════════════════════════════════════════════════════════════════
+function startLockoutCountdown(until) {
+  $("loginBtn").disabled  = true;
+  $("loginUser").disabled = true;
+  $("loginPass").disabled = true;
+  if (lockoutInterval) clearInterval(lockoutInterval);
+  lockoutInterval = setInterval(() => {
+    const left = Math.max(0, until - Date.now());
+    const m = String(Math.floor(left / 60000)).padStart(2,"0");
+    const s = String(Math.floor((left % 60000) / 1000)).padStart(2,"0");
+    alertShow($("lockoutAlert"), `🔒 Too many failed attempts. Try again in ${m}:${s}.`);
+    if (left <= 0) {
+      clearInterval(lockoutInterval);
+      $("loginBtn").disabled = $("loginUser").disabled = $("loginPass").disabled = false;
+      alertHide($("lockoutAlert"));
+      localStorage.removeItem("ac_lockout");
+      localStorage.removeItem("ac_attempts");
+    }
+  }, 1000);
+}
+
+async function login() {
+  const lockoutUntil = parseInt(localStorage.getItem("ac_lockout") || "0");
+  if (Date.now() < lockoutUntil) return;
+
+  const u   = $("loginUser").value.trim();
+  const p   = $("loginPass").value;
+  const err = $("loginErr");
+  alertHide(err);
+
+  if (!u || !p) return alertShow(err, "Enter your username and password.");
+
+  const stored = JSON.parse(localStorage.getItem("ac_credHash") || "{}");
+  const uHash  = await sha256(u);
+  const pHash  = await sha256(p);
+  $("loginPass").value = "";
+
+  if (uHash === stored.u && pHash === stored.p) {
+    localStorage.removeItem("ac_attempts");
+    localStorage.removeItem("ac_lockout");
+    $("loginUser").value = "";
+    startSession();
+  } else {
+    let attempts = parseInt(localStorage.getItem("ac_attempts") || "0") + 1;
+    localStorage.setItem("ac_attempts", attempts);
+    if (attempts >= MAX_ATTEMPTS) {
+      const until = Date.now() + LOCKOUT_MS;
+      localStorage.setItem("ac_lockout", until);
+      localStorage.setItem("ac_attempts", "0");
+      startLockoutCountdown(until);
+    } else {
+      const left = MAX_ATTEMPTS - attempts;
+      alertShow(err, `Incorrect credentials. ${left} attempt${left !== 1 ? "s" : ""} remaining.`);
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Session
+// ════════════════════════════════════════════════════════════════
+function startSession() {
+  sessionExpiry = Date.now() + SESSION_MS;
+  showCard("banCard");
+
+  $("universeId").value = localStorage.getItem("ac_universeId") || "";
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("userId")) {
+    $("userId").value = params.get("userId");
+    lookupPlayer();
+  }
+  if (params.get("name")) {
+    $("privateReason").value =
+      `AntiCheat flag — ${params.get("name")} (${params.get("userId")})`;
+  }
+
+  ["click","keydown","mousemove","touchstart"].forEach(ev =>
+    document.addEventListener(ev, resetActivity, { passive: true })
+  );
+
+  if (sessionInterval) clearInterval(sessionInterval);
+  sessionInterval = setInterval(() => {
+    const left = Math.max(0, sessionExpiry - Date.now());
+    const m = String(Math.floor(left / 60000)).padStart(2,"0");
+    const s = String(Math.floor((left % 60000) / 1000)).padStart(2,"0");
+    const el = $("sessionTimer");
+    el.textContent = `${m}:${s}`;
+    el.classList.toggle("warn", left < 5 * 60 * 1000);
+    if (left <= 0) logout(true);
+  }, 1000);
+}
+
+function logout(expired = false) {
+  clearInterval(sessionInterval);
+  sessionInterval = null;
+  sessionExpiry   = null;
+  apiKeyMemory    = "";
+  ["apiKey","userId"].forEach(id => { const el = $(id); if (el) el.value = ""; });
+  $("displayReason").value = "You have been banned for cheating.";
+  $("privateReason").value = "Manual ban via AntiCheat Ban Tool.";
+  $("playerBadge").classList.remove("show");
+  alertHide($("banErr")); alertHide($("banOk"));
+  $("apiNote").classList.add("show");
+  showCard("loginCard");
+  if (expired) alertShow($("loginErr"), "Session expired after 30 minutes of inactivity.");
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Ban Tool
+// ════════════════════════════════════════════════════════════════
+function onApiKeyInput() {
+  apiKeyMemory = $("apiKey").value;
+  if (apiKeyMemory) $("apiNote").classList.remove("show");
+  else              $("apiNote").classList.add("show");
+}
+
+function saveUniverseId() {
+  localStorage.setItem("ac_universeId", $("universeId").value.trim());
+}
+
+async function lookupPlayer() {
+  const uid = $("userId").value.trim();
+  if (!uid || isNaN(uid)) { $("playerBadge").classList.remove("show"); return; }
+  try {
+    const res  = await fetch(`https://users.roblox.com/v1/users/${uid}`);
+    const data = await res.json();
+    if (data.name) {
+      $("playerName").textContent      = data.name;
+      $("playerIdDisplay").textContent = `ID: ${uid}`;
+      $("playerAvatar").src =
+        `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${uid}&size=48x48&format=Png&isCircular=true`;
+      $("playerBadge").classList.add("show");
+    }
+  } catch { $("playerBadge").classList.remove("show"); }
+}
+
+async function executeBan() {
+  const apiKey        = apiKeyMemory || $("apiKey").value.trim();
+  const universeId    = $("universeId").value.trim();
+  const userId        = $("userId").value.trim();
+  const duration      = parseInt($("duration").value);
+  const banAlts       = $("banAlts").value === "true";
+  const displayReason = $("displayReason").value.trim();
+  const privateReason = $("privateReason").value.trim();
+
+  alertHide($("banErr")); alertHide($("banOk"));
+
+  if (!apiKey)                  return alertShow($("banErr"), "Open Cloud API key is required.");
+  if (!universeId)              return alertShow($("banErr"), "Universe ID is required.");
+  if (!userId || isNaN(userId)) return alertShow($("banErr"), "A valid numeric UserID is required.");
+
+  $("banBtn").disabled    = true;
+  $("banBtn").textContent = "⏳ Banning...";
+  resetActivity();
+
+  try {
+    const body = {
+      gameJoinRestriction: {
+        active: true,
+        duration: duration === -1 ? null : `${duration}s`,
+        displayReason, privateReason,
+        excludeAltAccounts: !banAlts,
+      }
+    };
+
+    const res = await fetch(
+      `https://apis.roblox.com/cloud/v2/universes/${universeId}/user-restrictions/${userId}`,
+      {
+        method: "PATCH",
+        headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (res.ok) {
+      const label = duration === -1
+        ? "permanently"
+        : `for ${$("duration").options[$("duration").selectedIndex].text}`;
+      alertShow($("banOk"),
+        `✅ ${$("playerName").textContent || "Player"} (${userId}) has been banned ${label}.`);
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alertShow($("banErr"),
+        `Ban failed (${res.status}): ${err.message || err.code || "Check your API key and Universe ID."}`);
+    }
+  } catch (e) {
+    alertShow($("banErr"), "Network error: " + e.message);
+  } finally {
+    $("banBtn").disabled    = false;
+    $("banBtn").textContent = "🔨 Ban Player";
+  }
+}
+
+function clearBanForm() {
+  $("userId").value = $("playerBadge").classList.remove("show") || "";
+  $("displayReason").value = "You have been banned for cheating.";
+  $("privateReason").value = "Manual ban via AntiCheat Ban Tool.";
+  alertHide($("banErr")); alertHide($("banOk"));
+}
+</script>
+</body>
+</html>
