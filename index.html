@@ -406,7 +406,7 @@
 //  Generate it using this file locally with ?setup in the URL.
 //  Leave as "" and the setup screen will be permanently locked.
 // ════════════════════════════════════════════════════════════════
-const SETUP_KEY_HASH = "7ea6ffb7d3c26f250df53f72f29a8207ec8d8dfd8d799e625272c1e68f6da5ae";
+const SETUP_KEY_HASH = "";
 
 // ── Constants ────────────────────────────────────────────────────
 const SESSION_MS   = 30 * 60 * 1000;
@@ -455,8 +455,8 @@ function resetActivity() {
 window.addEventListener("load", async () => {
   const params = new URLSearchParams(window.location.search);
 
-  // ?setup — local hash generator, only usable before SETUP_KEY_HASH is set
-  if (params.has("setup") && !SETUP_KEY_HASH) {
+  // ?setup — hash generator, always accessible so you can regenerate your hash anytime
+  if (params.has("setup")) {
     showCard("hashGenCard");
     return;
   }
